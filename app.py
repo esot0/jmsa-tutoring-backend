@@ -69,6 +69,12 @@ def parse_dates(input_date_list):
     return formatted_list;
 
 
+@app.route("/", defaults={"path": ""})
+@app.route("/<string:path>")
+@app.route("/<path:path>")
+def index():
+	return ({"Welcome to JMSA Tutoring", 200})
+
 @app.route('/user/<username>/sessions', methods=['GET'])
 @cross_origin(supports_credentials=True)
 @flask_praetorian.auth_required
