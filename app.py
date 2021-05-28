@@ -395,8 +395,7 @@ def connect():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(os.getenv("PORT") or 5000)
     socketio.run(app)
-    print("Running on port 5000")
 
 
