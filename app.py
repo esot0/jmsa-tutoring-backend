@@ -401,7 +401,6 @@ def connect():
 
 
 if __name__ == '__main__':
-    app.run(os.getenv("PORT") or 5000)
-    socketio.run(app)
-
-
+	port = os.getenv("PORT", 5000)
+	app.run(port)
+	socketio.run(app)
