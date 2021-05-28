@@ -397,10 +397,9 @@ def handle_message(msg):
 
 @socketio.on('connect')
 def connect():
-    print("Connectedfus")
-
+    print("Connectedfus") 
 
 if __name__ == '__main__':
-	port = os.getenv("PORT", 5000)
-	app.run(port)
+	port = int(os.environ.get('PORT'))
+	app.run(host='0.0.0.0', port=port)
 	socketio.run(app)
