@@ -53,8 +53,9 @@ guard = flask_praetorian.Praetorian()
 guard.init_app(app, user_class=User)
 
 
-
+CORS(app, origins="https://jmsa-tutoring.netlify.app")
 mail = Mail(app)
+socketio = SocketIO(app,cors_allowed_origins="https://jmsa-tutoring.netlify.app")
 
 def allowed_file(filename):
     return '.' in filename and \
