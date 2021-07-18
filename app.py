@@ -55,7 +55,6 @@ guard.init_app(app, user_class=User)
 
 
 mail = Mail(app)
-socketio = SocketIO(app,cors_allowed_origins="https://jmsa-tutoring.netlify.app/")
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -257,7 +256,7 @@ def finalize():
         ret = {'access_token': guard.encode_jwt_token(user, override_access_lifespan=None, override_refresh_lifespan=None, bypass_user_check=False, is_registration_token=False, is_reset_token=False, username=user.username)}
         return (flask.jsonify(ret), 200)
     except Exception as e:
-        print(e)
+        print("EXCEPTION: " , e)
         return str(e)
 
 @app.route('/send_password_email', methods=['POST'])
