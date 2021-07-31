@@ -9,3 +9,4 @@ flask_praetorian==1.2.0
 python-dotenv==0.17.1
 WTForms==2.3.3
 dnspython==2.1.0
+gevent==21.1.2
