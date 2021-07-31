@@ -1,7 +1,10 @@
+from gevent import monkey
+monkey.patch_all()
 import os
 import flask
 import flask_cors
 import flask_praetorian
+
 from dotenv import load_dotenv
 from flask import request, jsonify, session
 from flask_cors import CORS, cross_origin
@@ -21,15 +24,15 @@ from flask_socketio import SocketIO
 
 load_dotenv()
 
-
 UPLOAD_FOLDER = 'profile_pictures'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 app = flask.Flask(__name__)
-app.config['SECRET_KEY'] = "/NJIBYUGHBYUHIKNBJBYBTGYIUJNBGFB/"
-CONNECTION = connect("testing", host=os.getenv("CONNECTION_STRING"))
-CORS(app, support_credentials=True)
 
+
+CONNECTION = connect("testing", host=os.getenv("CONNECTION_STRING"))
+
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 app.config['MAIL_SERVER']='smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config["MAIL_USERNAME"] = "sotoemily03@gmail.com"
@@ -46,16 +49,14 @@ app.config["JWT_ACCESS_LIFESPAN"] = {"hours": 24}
 app.config["JWT_REFRESH_LIFESPAN"] = {"days": 30}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-
-
-
 guard = flask_praetorian.Praetorian()
+
 guard.init_app(app, user_class=User)
 
+CORS(app, origins=["http://localhost:3000","https://jmsa-tutoring.netlify.app"])
+socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=["http://localhost:3000","https://jmsa-tutoring.netlify.app"])
 
-CORS(app, origins="https://jmsa-tutoring.netlify.app")
 mail = Mail(app)
-socketio = SocketIO(app,cors_allowed_origins="https://jmsa-tutoring.netlify.app")
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -393,13 +394,13 @@ def tutoring_history(username):
 
 @socketio.on('msg')
 def handle_message(msg):
-	socketio.emit('msg', msg)  
+    print("Got a msg")
+    socketio.emit('msg', msg)  
 
 @socketio.on('connect')
 def connect():
-    print("Connectedfus") 
+    print("Connected to server") 
 
 if __name__ == '__main__':
-	port = int(os.environ.get('PORT'))
-	app.run(host='0.0.0.0', port=port)
-	socketio.run(app)
+    port = int(os.environ.get('PORT'))
+    socketio.run(app=app, use_reloader=True, port=port)
