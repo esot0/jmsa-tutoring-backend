@@ -402,5 +402,5 @@ def connect():
     print("Connected to server") 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT'))
+    port = int(os.getenv('PORT'))
     socketio.run(app=app, use_reloader=True, port=port)
