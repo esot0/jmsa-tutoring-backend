@@ -53,8 +53,8 @@ guard = flask_praetorian.Praetorian()
 
 guard.init_app(app, user_class=User)
 
-CORS(app, origins=["https://jmsa-tutoring.netlify.app"])
-socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=["https://jmsa-tutoring.netlify.app"])
+CORS(app, origins=["https://jmsa-tutoring.netlify.app/"])
+socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=["https://jmsa-tutoring.netlify.app/"])
 
 mail = Mail(app)
 
