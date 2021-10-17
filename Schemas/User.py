@@ -1,6 +1,6 @@
 from mongoengine import *
 from bson.json_util import loads, dumps
-allowed_roles = ["admin", "tutor", "student"]
+allowed_roles = ["admin", "tutor", "student", "student-leader"]
 
 
 class User(Document):
@@ -40,7 +40,6 @@ class User(Document):
     @classmethod
     def lookup(cls, username):
         try:
-            print(User.objects.filter(Q(username=username)|Q(email=username)).get().to_json())
             return User.objects.filter(Q(username=username)|Q(email=username)).get()
         except DoesNotExist:
             return None

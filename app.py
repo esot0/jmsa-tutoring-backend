@@ -1,5 +1,6 @@
 from gevent import monkey
 monkey.patch_all()
+from mongoengine.errors import NotUniqueError
 import os
 import flask
 import flask_cors
@@ -42,7 +43,7 @@ app.config['MAIL_USE_SSL'] = True
 
 app.config["PRAETORIAN_EMAIL_TEMPLATE"] = './email.html'
 app.config["PRATEORIAN_CONFIRMATION_SENDER"] = "sotoemily03@gmail.com"
-app.config["PRAETORIAN_CONFIRMATION_URI"] = "https://jmsa-tutoring.netlify.app/user/finalize_registration"
+app.config["PRAETORIAN_CONFIRMATION_URI"] = "http://localhost:3000/user/finalize_registration"
 app.config["PRAETORIAN_CONFIRMATION_SUBJECT"] = "[JMSA Tutoring] Please Verify Your Account"
 
 app.config["JWT_ACCESS_LIFESPAN"] = {"hours": 24}
@@ -52,9 +53,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 guard = flask_praetorian.Praetorian()
 
 guard.init_app(app, user_class=User)
-
-CORS(app, origins=["https://jmsa-tutoring.netlify.app/"])
-socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=["https://jmsa-tutoring.netlify.app/"])
+CORS(app, origins=["http://localhost:3000","https://jmsa-tutoring.netlify.app"])
+socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=["http://localhost:3000","https://jmsa-tutoring.netlify.app"])
 
 mail = Mail(app)
 
@@ -67,7 +67,7 @@ def parse_dates(input_date_list):
     for date_input in input_date_list:
         datetime_formatted = datetime.strptime(date_input, "%m/%d/%Y")
         formatted_list.append(datetime_formatted)
-    return formatted_list;
+    return formatted_list
 
 
 @app.route("/", defaults={"path": ""})
@@ -101,9 +101,8 @@ def all_sessions():
 def create_session():
     try:
         tutoring_session = TutoringSession()
-        datetime_formatted = datetime.strptime(request.json['date'], "%m/%d/%Y %I:%M %p")
-        end_datetime_formatted = datetime.strptime(request.json['end_date'], "%m/%d/%Y %I:%M %p")
-
+        datetime_formatted = datetime.strptime(request.json['date'], "%m/%d/%Y %I:%M %p %z")
+        end_datetime_formatted = datetime.strptime(request.json['end_date'], "%m/%d/%Y %I:%M %p %z")
         tutoring_session.date = datetime_formatted
         tutoring_session.end_time = end_datetime_formatted
         tutoring_session.subject = request.json['subject']
@@ -126,11 +125,13 @@ def create_session():
         }
         
         tutoring_session.save()
+
         tutor.sessions.append(tutoring_session)
         student.sessions.append(tutoring_session)
 
         tutor.save()
         student.save()
+    
         return tutoring_session.to_json()
     except Exception as e:
         print(str(e))
@@ -145,12 +146,15 @@ def session_edit(id):
 
     if request.method == "POST":
             print(request.json)
-            session_to_edit.date=datetime.strptime(request.json['date'], "%m/%d/%Y %I:%M %p") if 'date' in request.json else session_to_edit.date
+            session_to_edit.date=datetime.strptime(request.json['date'], "%m/%d/%Y %I:%M %p %z") if 'date' in request.json else session_to_edit.date
             session_to_edit.subject = request.json['subject'] if 'subject' in request.json else session_to_edit.subject
-            session_to_edit.end_time = datetime.strptime(request.json['end_time'], "%m/%d/%Y %I:%M %p") if 'end_time' in request.json else session_to_edit.end_time
+            session_to_edit.end_time = datetime.strptime(request.json['end_time'], "%m/%d/%Y %I:%M %p %z") if 'end_time' in request.json else session_to_edit.end_time
             session_to_edit.tutor_confirmed = request.json['tutor_confirmed'] if 'tutor_confirmed' in request.json else session_to_edit.tutor_confirmed
             session_to_edit.student_confirmed = request.json['student_confirmed'] if 'student_confirmed' in request.json else session_to_edit.student_confirmed
             session_to_edit.save()
+
+            print(session_to_edit.date)
+            print(session_to_edit.end_time)
             return session_to_edit.to_json();
     if request.method == "DELETE":
         session_to_edit.delete()
@@ -196,9 +200,8 @@ def login_page():
                 ret = {"access_token": guard.encode_jwt_token(user, override_access_lifespan=None, override_refresh_lifespan=None, bypass_user_check=False, is_registration_token=False, is_reset_token=False, username=user.username)}
                 session['jwt_token'] = ret
                 return jsonify(ret)
-        else:
-            return "<h1>Invalid format. Try again<h1>"
-
+            else:
+               return 'Invalid credentials', 401
     except Exception as e:
         print(e)
         print(traceback.print_exc)
@@ -210,7 +213,6 @@ def allowed_file(filename):
 
 @app.route('/user/sign_up', methods=['GET', 'POST'])
 def api_sign_up():
-    #definitely try and fix up that double replace D: !
     try:
         if request.method == 'POST':
             print(request.form)
@@ -226,28 +228,29 @@ def api_sign_up():
                 user.roles = request.form.get('roles')
             if 'us_phone_number' in request.form:
                 user.us_phone_number = request.form.get('us_phone_number')
-            if 'availability' in request.form:
+            if 'availability' in request.form and len(request.form['availability'])>0:
                 user.availability = parse_dates(str(request.form.getlist('availability')).replace("['", "").replace("']", "").split(','))
             if 'email' in request.form:
                 user.email = request.form.get('email')
+            if 'tutor_subjects' in request.form: 
+                user.tutor_subjects = request.form.getlist('tutor_subjects')
             if 'biography' in request.form:
-              user.biography = request.form.get('biography')
-            if 'profile_picture' in request.form:
+                user.biography = request.form.get('biography')
+            if 'profile_picture' in request.files:
                 profile_picture = request.files['profile_picture']
+                if allowed_file(profile_picture.filename):
+                    filename = secure_filename(profile_picture.filename)
+                    profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
+                    user.profile_picture = os.path.join(app.config['UPLOAD_FOLDER'],filename)
 
-            if 'profile_picture' in request.form and allowed_file(profile_picture.filename):
-                filename = secure_filename(profile_picture.filename)
-                profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
-                user.profile_picture = os.path.join(app.config['UPLOAD_FOLDER'],filename)
-
-            guard.send_registration_email(user.email, user=user, confirmation_sender="sotoemily03@gmail.com", confirmation_uri="https://jmsa-tutoring.netlify.app/finalize_registration" )
+            guard.send_registration_email(user.email, user=user, confirmation_sender="sotoemily03@gmail.com", confirmation_uri="http://localhost:3000/finalize_registration" )
             user.save()
             return "Success"
+    except NotUniqueError as n:
+        return "Duplicate key", 200
     except Exception as e:
         print(e)
         return "Failure", 422
-
-
 @app.route('/finalize', methods=['GET'])
 def finalize():
     try:
@@ -264,7 +267,7 @@ def finalize():
 @app.route('/send_password_email', methods=['POST'])
 def send_email():
     try:
-        return guard.send_reset_email(email=request.json['email'], reset_sender="sotoemily03@gmail.com", reset_uri="https://jmsa-tutoring.netlify.app/reset_password")
+        return guard.send_reset_email(email=request.json['email'], reset_sender="sotoemily03@gmail.com", reset_uri="http://localhost:3000/reset_password")
     except Exception as e:
         print(e)
         return str(e)
@@ -275,6 +278,7 @@ def reset_password():
         reset_token = guard.read_token_from_header()
         user = guard.validate_reset_token(reset_token)
         if(user):  
+            print("Reset successful")
             user.hashed_password=guard.hash_password(request.json['password'])
             guard.verify_and_update(user=user, password=request.json['password'])
             user.save()
@@ -299,19 +303,37 @@ def get_profile_picture(filename):
 def user_edit(username):
     user_to_edit = User.objects.get(username=username)
     if request.method == "POST":
-        print(request.json)
-        user_to_edit.availability = parse_dates(request.json['availability']) if 'availability' in request.json else user_to_edit.availability
-        user_to_edit.username = request.json['username'] if 'username' in request.json else user_to_edit.username
-        user_to_edit.email = request.json['email'] if 'email' in request.json else  user_to_edit.email
-        user_to_edit.us_phone_number = request.json['us_phone_number'] if 'us_phone_number' in request.json else user_to_edit.us_phone_number 
-        user_to_edit.biography = request.json['biography'] if 'biography' in request.json else user_to_edit.biography
-        user_to_edit.roles = request.json['roles'] if 'roles' in request.json else  user_to_edit.roles
+          if 'username' in request.form:
+                user_to_edit.username = request.form.get('username')
+          if 'roles' in request.form:
+                user_to_edit.roles = request.form.get('roles')
+          if 'us_phone_number' in request.form:
+                user_to_edit.us_phone_number = request.form.get('us_phone_number')
+          if 'availability' in request.form and len(request.form['availability'])>0:
+                user_to_edit.availability = parse_dates(str(request.form.getlist('availability')).replace("['", "").replace("']", "").split(','))
+          if 'email' in request.form:
+                user_to_edit.email = request.form.get('email')
+          if 'biography' in request.form:
+                user_to_edit.biography = request.form.get('biography')
+          if 'profile_picture' in request.files:
+                profile_picture = request.files['profile_picture']
+                if allowed_file(profile_picture.filename):
+                    filename = secure_filename(profile_picture.filename)
+                    profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
+                    user_to_edit.profile_picture = os.path.join(app.config['UPLOAD_FOLDER'],filename)
 
-        user_to_edit.save()
-        ret = {"access_token": guard.encode_jwt_token(user_to_edit, override_access_lifespan=None, override_refresh_lifespan=None, bypass_user_check=False, is_registration_token=False, is_reset_token=False, username=user_to_edit.username)}
-        return jsonify(ret)
-
+          user_to_edit.save()
+          ret = {"access_token": guard.encode_jwt_token(user_to_edit, override_access_lifespan=None, override_refresh_lifespan=None, bypass_user_check=False, is_registration_token=False, is_reset_token=False, username=user_to_edit.username)}
+          return jsonify(ret)
     if request.method == "DELETE":
+        for session in user_to_edit.session:
+            tutor_sessions = []
+            if "tutor" in user_to_edit.rolenames:
+                tutor_sessions = TutoringSession.objects(tutor__id=user_to_edit.id).all()
+            if "student" in user_to_edit.rolenames:
+                tutor_sessions = TutoringSession.objects(student__id=user_to_edit.id).all()
+            for session in tutor_sessions:
+                session.delete()
         user_to_edit.delete()
         return 'Success', 200
     if request.method == "GET":
@@ -394,6 +416,7 @@ def tutoring_history(username):
 
 @socketio.on('msg')
 def handle_message(msg):
+    print("Got a msg")
     socketio.emit('msg', msg)  
 
 @socketio.on('connect')
@@ -402,4 +425,4 @@ def connect():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT'))
-    socketio.run(app=app, use_reloader=True, port=port, host="0.0.0.0")
+    socketio.run(app=app, use_reloader=True, port=5000, host="0.0.0.0")
