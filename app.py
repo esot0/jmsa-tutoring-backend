@@ -23,6 +23,7 @@ from werkzeug.utils import secure_filename
 from flask import send_from_directory
 from flask_socketio import SocketIO
 
+siteBase = "https://jmsa-tutoring.netlify.app"
 load_dotenv()
 
 UPLOAD_FOLDER = 'profile_pictures'
@@ -43,7 +44,7 @@ app.config['MAIL_USE_SSL'] = True
 
 app.config["PRAETORIAN_EMAIL_TEMPLATE"] = './email.html'
 app.config["PRATEORIAN_CONFIRMATION_SENDER"] = "sotoemily03@gmail.com"
-app.config["PRAETORIAN_CONFIRMATION_URI"] = "http://localhost:3000/user/finalize_registration"
+app.config["PRAETORIAN_CONFIRMATION_URI"] = f"{siteBase}/user/finalize_registration"
 app.config["PRAETORIAN_CONFIRMATION_SUBJECT"] = "[JMSA Tutoring] Please Verify Your Account"
 
 app.config["JWT_ACCESS_LIFESPAN"] = {"hours": 24}
@@ -53,8 +54,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 guard = flask_praetorian.Praetorian()
 
 guard.init_app(app, user_class=User)
-CORS(app, origins=["http://localhost:3000","https://jmsa-tutoring.netlify.app"])
-socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=["http://localhost:3000","https://jmsa-tutoring.netlify.app"])
+CORS(app, origins=[siteBase])
+socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=[siteBase])
 
 mail = Mail(app)
 
@@ -243,7 +244,7 @@ def api_sign_up():
                     profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
                     user.profile_picture = os.path.join(app.config['UPLOAD_FOLDER'],filename)
 
-            guard.send_registration_email(user.email, user=user, confirmation_sender="sotoemily03@gmail.com", confirmation_uri="http://localhost:3000/finalize_registration" )
+            guard.send_registration_email(user.email, user=user, confirmation_sender="sotoemily03@gmail.com", confirmation_uri=f"{siteBase}/finalize_registration" )
             user.save()
             return "Success"
     except NotUniqueError as n:
@@ -425,4 +426,4 @@ def connect():
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT'))
-    socketio.run(app=app, use_reloader=True, port=5000, host="0.0.0.0")
+    socketio.run(app=app, use_reloader=True, port=port, host="0.0.0.0")
