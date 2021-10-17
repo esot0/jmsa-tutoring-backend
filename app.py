@@ -55,7 +55,7 @@ guard = flask_praetorian.Praetorian()
 
 guard.init_app(app, user_class=User)
 CORS(app, origins=[siteBase])
-socketio = SocketIO(app, logger=True, engineio_logger=True, cors_allowed_origins=[siteBase])
+socketio = SocketIO(app, logger=False, engineio_logger=False, cors_allowed_origins=[siteBase])
 
 mail = Mail(app)
 
@@ -94,7 +94,6 @@ def user_sessions(username):
 def all_sessions():
     tutor_sessions = TutoringSession.objects().all()
     return tutor_sessions.to_json()
-#rtc data
 
 @app.route('/user/sessions/new', methods=['GET', 'POST'])
 @cross_origin(supports_credentials=True)
@@ -135,7 +134,7 @@ def create_session():
     
         return tutoring_session.to_json()
     except Exception as e:
-        print(str(e))
+        
         return str(e)
 
 
@@ -146,17 +145,15 @@ def session_edit(id):
     session_to_edit = TutoringSession.objects.get(id=id)
 
     if request.method == "POST":
-            print(request.json)
+            
             session_to_edit.date=datetime.strptime(request.json['date'], "%m/%d/%Y %I:%M %p %z") if 'date' in request.json else session_to_edit.date
             session_to_edit.subject = request.json['subject'] if 'subject' in request.json else session_to_edit.subject
             session_to_edit.end_time = datetime.strptime(request.json['end_time'], "%m/%d/%Y %I:%M %p %z") if 'end_time' in request.json else session_to_edit.end_time
             session_to_edit.tutor_confirmed = request.json['tutor_confirmed'] if 'tutor_confirmed' in request.json else session_to_edit.tutor_confirmed
             session_to_edit.student_confirmed = request.json['student_confirmed'] if 'student_confirmed' in request.json else session_to_edit.student_confirmed
             session_to_edit.save()
-
-            print(session_to_edit.date)
-            print(session_to_edit.end_time)
-            return session_to_edit.to_json();
+            
+            return session_to_edit.to_json()
     if request.method == "DELETE":
         session_to_edit.delete()
             
@@ -187,7 +184,6 @@ def chat(username, recipient):
        elif request.method=="GET":
            return Message.objects.filter(Q(recipient=recipient) & Q(sender=user.id) | Q(sender=recipient) & Q(recipient=user.id)).to_json()
     except Exception as e:
-        traceback.print_exc()
         return 'Invalid operation'
 
 @app.route('/user/sign_in', methods=['POST'])
@@ -204,8 +200,6 @@ def login_page():
             else:
                return 'Invalid credentials', 401
     except Exception as e:
-        print(e)
-        print(traceback.print_exc)
         return 'Invalid credentials', 401
 
 def allowed_file(filename):
@@ -216,7 +210,7 @@ def allowed_file(filename):
 def api_sign_up():
     try:
         if request.method == 'POST':
-            print(request.form)
+            
             user = User()
             user.id=ObjectId()
             if 'username' in request.form:
@@ -250,7 +244,6 @@ def api_sign_up():
     except NotUniqueError as n:
         return "Duplicate key", 200
     except Exception as e:
-        print(e)
         return "Failure", 422
 @app.route('/finalize', methods=['GET'])
 def finalize():
@@ -262,7 +255,7 @@ def finalize():
         ret = {'access_token': guard.encode_jwt_token(user, override_access_lifespan=None, override_refresh_lifespan=None, bypass_user_check=False, is_registration_token=False, is_reset_token=False, username=user.username)}
         return (flask.jsonify(ret), 200)
     except Exception as e:
-        print("EXCEPTION: " , e)
+        
         return str(e)
 
 @app.route('/send_password_email', methods=['POST'])
@@ -270,7 +263,7 @@ def send_email():
     try:
         return guard.send_reset_email(email=request.json['email'], reset_sender="sotoemily03@gmail.com", reset_uri="http://localhost:3000/reset_password")
     except Exception as e:
-        print(e)
+        
         return str(e)
         
 @app.route('/reset_password', methods=['POST'])
@@ -279,13 +272,13 @@ def reset_password():
         reset_token = guard.read_token_from_header()
         user = guard.validate_reset_token(reset_token)
         if(user):  
-            print("Reset successful")
+            
             user.hashed_password=guard.hash_password(request.json['password'])
             guard.verify_and_update(user=user, password=request.json['password'])
             user.save()
             return ('200')
     except Exception as e:
-        print(e)
+        
         return str(e)
         
 @app.route('/user/<username>', methods=['GET'])
@@ -381,7 +374,7 @@ def find_subjects():
 @flask_praetorian.auth_required
 def delete_subject(id):
   subject = Subject.objects().get(id=id)
-  print(subject)
+  
   subject.delete()
   return ("Success", 200)
     
@@ -412,17 +405,15 @@ def tutoring_history(username):
         else:
             return sessions.to_json()
     except Exception as e:
-        traceback.print_exc()
         return 'Failure retrieving resources', 400
 
 @socketio.on('msg')
 def handle_message(msg):
-    print("Got a msg")
     socketio.emit('msg', msg)  
 
 @socketio.on('connect')
 def connect():
-    print("Connected to server") 
+    print("Placeholder")
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT'))
